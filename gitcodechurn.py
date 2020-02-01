@@ -166,8 +166,11 @@ def is_new_file(result, file):
 def get_commits(before, after, author, dir):
     # note --no-merges flag (usually we coders do not overhaul contributions)
     # note --reverse flag to traverse history from past to present
-    command = 'git log --author="'+author+'" --format="%h" --no-abbrev '
+    command = 'git log --author='+author+' --format="%h" --no-abbrev '
     command += '--before="'+before+'" --after="'+after+'" --no-merges --reverse'
+
+    # print(command)
+
     return get_proc_out(command, dir).splitlines()
 
 # not used but still could be of value in the future
