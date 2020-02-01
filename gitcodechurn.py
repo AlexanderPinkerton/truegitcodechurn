@@ -32,6 +32,9 @@ import os
 import argparse
 import datetime
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 def main():
     parser = argparse.ArgumentParser(
         description = 'Compute true git code churn (for project managers)'
@@ -49,7 +52,7 @@ def main():
     parser.add_argument(
         '--author',
         type = str,
-        help = 'author string (not committer)'
+        help = 'author string (not committer). Use \'ALL\' for all authors'
     )
     parser.add_argument(
         '--dir',
@@ -63,11 +66,46 @@ def main():
     author = args.author
     dir = args.dir
 
-    commits = get_commits(before, after, author, dir)
+    results = {}
+
+    if author == "ALL":
+        authors = get_authors(dir)
+        for name in authors:
+            print("Calculating churn for ", name)
+            data = calc_churn(before, after, name, dir)
+            if(data["churn"] != 0 or data["contribution"] !=0 ):
+                del data['name']
+                results[name] = data
+    else:
+        data = calc_churn(before, after, author, dir)
+        del data['name']
+        results[author] = data
+
+    show_chart(results)
+    # print(results)
+
+
+def show_chart(results):
+    x = [ k for k,v in results.items() ]
+    y_1 = [ v["contribution"] for k,v in results.items() ]
+    y_2 = [ v["churn"] for k,v in results.items() ]
+
+    fig, ax = plt.subplots()
+    ax.bar(x, y_1)
+    ax.bar(x, y_2)
+
+    # Formatting x labels
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    
+    plt.show()
+
+def calc_churn(before, after, name, dir):
+   
+    commits = get_commits(before, after, name, dir)
 
     # structured like this: files -> LOC
     files = {}
-
     contribution = 0
     churn = 0
 
@@ -79,10 +117,19 @@ def main():
             contribution,
             churn
         )
+    
+    return {"name":name, "contribution":contribution, "churn":-churn}
 
-    # print files in case more granular results are needed
-    print('contribution: ', contribution)
-    print('churn: ', -churn)
+def get_authors(directory):
+    # Get all of the authors for this repository
+    authors = subprocess.Popen(["git", "log", "--format='%aN'"], stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
+    # Sort and remove duplicates
+    sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
+    names = []
+    for output in sort.stdout.readlines():
+        names.append(output.strip())
+
+    return names
 
 def get_loc(commit, dir, files, contribution, churn):
     # git show automatically excludes binary file changes

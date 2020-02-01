@@ -9,10 +9,19 @@ command1 = ["git", "log", "--format='%aN'"]
 # gitcodechurn.get_proc_out
 
 #process = subprocess.run(command1, stdout=subprocess.PIPE)
-#output, error = process.communicate()
+# output, error = process.communicate()
 
-authors = subprocess.Popen(command1, stdout=subprocess.PIPE, universal_newlines=True)
-sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True)
+directory = "/Users/alexanderpinkerton/Documents/CryptVFS"
+# directory = "."
+
+# authors = gitcodechurn.get_proc_out(command1, directory)
+# print(authors)
+# print("------")
+# sort = gitcodechurn.get_proc_out(["sort", "-u"], directory)
+# print(sort)
+
+authors = subprocess.Popen(command1, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
+sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
 
 
 names = []
@@ -47,9 +56,7 @@ for output in sort.stdout.readlines():
 
 for name in names:
     
-    dir = "."
-
-    commits = gitcodechurn.get_commits("2020-03-01", "2018-11-29", name, dir)
+    commits = gitcodechurn.get_commits("2020-03-01", "2018-11-29", name, directory)
     # print(commits)
     # structured like this: files -> LOC
     files = {}
@@ -60,7 +67,7 @@ for name in names:
     for commit in commits:
         [files, contribution, churn] = gitcodechurn.get_loc(
             commit,
-            dir,
+            directory,
             files,
             contribution,
             churn
