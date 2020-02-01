@@ -1,0 +1,9 @@
+Get list of contributers
+git log --format='%aN' | sort -u
+
+
+Calculate the churn levels
+python ./gitcodechurn.py --before=2019-03-01 --after=2018-11-29 --author="Some author" --dir=/Users/myname/myrepo
+
+
+Need to combine some usernames, need to filter some usernames
