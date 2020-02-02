@@ -31,6 +31,7 @@ import shlex
 import os
 import argparse
 import datetime
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -79,20 +80,11 @@ def main():
     results = {}
 
     if authorFile:
-        # TODO: Load the author list from the file
-        authorData = {
-            "Alexander" : ["AlexanderPinkerton", "Alexander Pinkerton"],
-            "Aman" : ["Aman Grewal"],
-            "Brian" : ["Brian Cefali"],
-            "Chris" : ["Chris Higley", "higleyc"],
-            "Colin" : ["Colin Atkinson"],
-            "Erik" : ["Erik Aronesty", "erik", "erik aronesty", "earonesty"],
-            "Gabe" : ["Gabriel Blumenstock", "Gabriel"],
-            "Oren" : ["J. Oren Tysor", "Oren", "Oren Tysor", "lithiumFlower", "oren"],
-            "Mike" : ["Michael Krebs", "earthman1"],
-            "Shalom" : ["Shalom Cohen", "shalomcohen"],
-        }
+        # Parse the data in the authorFile
+        with open(authorFile) as json_file:
+            authorData = json.load(json_file)
 
+        # Calculate churn for each alias and total the values under the desired name
         for name, aliases in authorData.items():
             print("Calculating churn for ", name)
             total_contributions = 0
