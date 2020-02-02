@@ -59,19 +59,60 @@ def main():
         type = str,
         help = 'Git repository directory'
     )
+    parser.add_argument(
+        '--authorFile',
+        type = str,
+        help = 'File containing authors and dupe info.'
+    )
+
     args = parser.parse_args()
+
+    if not (args.author or args.authorFile):
+        parser.error('No action requested, add --author or --authorFile')
 
     before = args.before
     after = args.after
     author = args.author
     dir = args.dir
+    authorFile = args.authorFile
 
     results = {}
 
-    if author == "ALL":
+    if authorFile:
+        # TODO: Load the author list from the file
+        authorData = {
+            "Alexander" : ["AlexanderPinkerton", "Alexander Pinkerton"],
+            "Aman" : ["Aman Grewal"],
+            "Brian" : ["Brian Cefali"],
+            "Chris" : ["Chris Higley", "higleyc"],
+            "Colin" : ["Colin Atkinson"],
+            "Erik" : ["Erik Aronesty", "erik", "erik aronesty", "earonesty"],
+            "Gabe" : ["Gabriel Blumenstock", "Gabriel"],
+            "Oren" : ["J. Oren Tysor", "Oren", "Oren Tysor", "lithiumFlower", "oren"],
+            "Mike" : ["Michael Krebs", "earthman1"],
+            "Shalom" : ["Shalom Cohen", "shalomcohen"],
+        }
+
+        for name, aliases in authorData.items():
+            print("Calculating churn for ", name)
+            total_contributions = 0
+            total_churn = 0
+
+            for alias in aliases:
+                data = calc_churn(before, after, alias, dir)
+                if(data["churn"] != 0 or data["contribution"] !=0 ):
+                    print("\t", alias, data["contribution"], data["churn"])
+                    total_contributions += data["contribution"]
+                    total_churn += data["churn"]
+            
+            if(total_churn != 0 or total_contributions !=0):
+                results[name] = {"churn":total_churn, "contribution":total_contributions}
+
+    elif author == "ALL":
         authors = get_authors(dir)
         for name in authors:
             print("Calculating churn for ", name)
+            name = name.replace("'", "")
             data = calc_churn(before, after, name, dir)
             if(data["churn"] != 0 or data["contribution"] !=0 ):
                 del data['name']
@@ -81,23 +122,29 @@ def main():
         del data['name']
         results[author] = data
 
-    show_chart(results)
+    show_chart(results, dir)
     # print(results)
 
 
-def show_chart(results):
+def show_chart(results, directory):
     x = [ k for k,v in results.items() ]
     y_1 = [ v["contribution"] for k,v in results.items() ]
     y_2 = [ v["churn"] for k,v in results.items() ]
 
     fig, ax = plt.subplots()
-    ax.bar(x, y_1)
-    ax.bar(x, y_2)
+    fig.suptitle("Code Churn\n", fontsize=16)
+    ax.set_title("Repository: " + directory)
+    ax.set_xlabel('Author')
+    ax.set_ylabel('Contributions / Churn')
+
+    ax.bar(x, y_1, color=(122/255, 219/255, 163/255, 0.8))
+    ax.bar(x, y_2, color=(252/255, 97/255, 90/255, 0.8))
+    ax.axhline(linewidth=1, color='gray')
 
     # Formatting x labels
     plt.xticks(rotation=90)
     plt.tight_layout()
-    
+
     plt.show()
 
 def calc_churn(before, after, name, dir):
@@ -213,7 +260,7 @@ def is_new_file(result, file):
 def get_commits(before, after, author, dir):
     # note --no-merges flag (usually we coders do not overhaul contributions)
     # note --reverse flag to traverse history from past to present
-    command = 'git log --author='+author+' --format="%h" --no-abbrev '
+    command = 'git log --author="'+author+'" --format="%h" --no-abbrev '
     command += '--before="'+before+'" --after="'+after+'" --no-merges --reverse'
 
     # print(command)
