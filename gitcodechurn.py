@@ -91,12 +91,15 @@ def main():
             total_churn = 0
 
             for alias in aliases:
-                data = calc_churn(before, after, alias, dir)
-                if(data["churn"] != 0 or data["contribution"] !=0 ):
-                    print("\t", alias, data["contribution"], data["churn"])
-                    total_contributions += data["contribution"]
-                    total_churn += data["churn"]
-            
+                try:
+                    data = calc_churn(before, after, alias, dir)
+                    if(data["churn"] != 0 or data["contribution"] !=0 ):
+                        print("\t", alias, data["contribution"], data["churn"])
+                        total_contributions += data["contribution"]
+                        total_churn += data["churn"]
+                except UnicodeDecodeError as e:
+                    print("Failed to calculate churn for ", alias, e)
+                
             if(total_churn != 0 or total_contributions !=0):
                 results[name] = {"churn":total_churn, "contribution":total_contributions}
 
@@ -114,18 +117,17 @@ def main():
         del data['name']
         results[author] = data
 
-    show_chart(results, dir)
+    show_chart(results, before, after, dir)
     # print(results)
 
 
-def show_chart(results, directory):
+def show_chart(results, before, after, directory):
     x = [ k for k,v in results.items() ]
     y_1 = [ v["contribution"] for k,v in results.items() ]
     y_2 = [ v["churn"] for k,v in results.items() ]
 
-    fig, ax = plt.subplots()
-    fig.suptitle("Code Churn\n", fontsize=16)
-    ax.set_title("Repository: " + directory)
+    fig, ax = plt.subplots(num="Code Churn")
+    ax.set_title("Repository: " + directory + "\n\n" + after + " to " + before)
     ax.set_xlabel('Author')
     ax.set_ylabel('Contributions / Churn')
 
