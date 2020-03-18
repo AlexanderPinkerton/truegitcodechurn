@@ -77,14 +77,70 @@ def main():
     dir = args.dir
     authorFile = args.authorFile
 
-    results = {}
+    agg_results = {}
 
+    # if a config file was provided
     if authorFile:
         # Parse the data in the authorFile
         with open(authorFile) as json_file:
-            authorData = json.load(json_file)
+            configData = json.load(json_file)
+            authorData = configData.get("aliasMap", None)
+            repositories = configData.get("repositories", None)
 
-        # Calculate churn for each alias and total the values under the desired name
+        if repositories:
+            # Clone each repository and then brng them up to date
+            for repo in repositories:
+                # If the repo does not exist, clone it
+                directory = repo.split("/")[1].replace(".git","")
+                if not os.path.isdir(directory):
+                    command =  f'git clone {repo}'
+                    print("Cloning repository: ", repo, command, "\n")
+                    out = get_proc_out(command, ".").splitlines()
+                else:
+                    # otherwise, ensure it is up to date.
+                    command = 'git pull'
+                    print("Bringing repo up to date", repo)
+                    out = get_proc_out(command, directory).splitlines()
+
+                # Calculate the churn for the repo and aggregate into total
+                repo_results = get_churn_for_repo(before, after, directory, authorData=authorData)
+                for alias in repo_results:
+                    # Get the existing totals, if any
+                    existing = agg_results.get(alias, None)
+                    repo_total = repo_results[alias]
+                    if existing:
+                        # add em up
+                        agg_results[alias]['churn'] += repo_total['churn']
+                        agg_results[alias]['contribution'] += repo_total['contribution']
+                    else:
+                        agg_results[alias] = repo_total
+
+    # If there was a specified author
+    elif author == "ALL":
+        authors = get_authors(dir)
+        for name in authors:
+            print("Calculating churn for ", name)
+            name = name.replace("'", "")
+            data = calc_churn(before, after, name, dir)
+            if(data["churn"] != 0 or data["contribution"] !=0 ):
+                del data['name']
+                agg_results[name] = data
+    else:
+        data = calc_churn(before, after, author, dir)
+        del data['name']
+        agg_results[author] = data
+
+    repostr = "\n".join(repositories)
+    show_chart(agg_results, before, after, repostr)
+    print(agg_results)
+
+def get_churn_for_repo(before, after, directory, authorData=None):
+    
+    results = {}
+
+    print(f"Calculating churn for {directory}")
+
+    if authorData:
         for name, aliases in authorData.items():
             print("Calculating churn for ", name)
             total_contributions = 0
@@ -92,7 +148,7 @@ def main():
 
             for alias in aliases:
                 try:
-                    data = calc_churn(before, after, alias, dir)
+                    data = calc_churn(before, after, alias, directory)
                     if(data["churn"] != 0 or data["contribution"] !=0 ):
                         print("\t", alias, data["contribution"], data["churn"])
                         total_contributions += data["contribution"]
@@ -102,23 +158,12 @@ def main():
                 
             if(total_churn != 0 or total_contributions !=0):
                 results[name] = {"churn":total_churn, "contribution":total_contributions}
-
-    elif author == "ALL":
-        authors = get_authors(dir)
-        for name in authors:
-            print("Calculating churn for ", name)
-            name = name.replace("'", "")
-            data = calc_churn(before, after, name, dir)
-            if(data["churn"] != 0 or data["contribution"] !=0 ):
-                del data['name']
-                results[name] = data
+        
     else:
-        data = calc_churn(before, after, author, dir)
-        del data['name']
-        results[author] = data
-
-    show_chart(results, before, after, dir)
-    # print(results)
+        # default to all authors?
+        pass
+        
+    return results
 
 
 def show_chart(results, before, after, directory):
@@ -127,7 +172,7 @@ def show_chart(results, before, after, directory):
     y_2 = [ v["churn"] for k,v in results.items() ]
 
     fig, ax = plt.subplots(num="Code Churn")
-    ax.set_title("Repository: " + directory + "\n\n" + after + " to " + before)
+    ax.set_title("Repository\n" + directory + "\n\n" + after + " to " + before)
     ax.set_xlabel('Author')
     ax.set_ylabel('Contributions / Churn')
 
