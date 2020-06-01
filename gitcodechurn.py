@@ -1,5 +1,5 @@
 '''
-Author: Francis Laclé
+Author: Francis Laclé, Alexander Pinkerton
 License: MIT
 Version: 0.1
 
@@ -25,6 +25,8 @@ given time period.
 Tested with Python version 3.5.3 and Git version 2.20.1
 
 '''
+
+# Usage: python gitcodechurn.py --config <configfile.json> --before=2020-05-30 --after=2020-05-20 --chart
 
 import subprocess
 import shlex
@@ -61,28 +63,34 @@ def main():
         help = 'Git repository directory'
     )
     parser.add_argument(
-        '--authorFile',
+        '--config',
         type = str,
-        help = 'File containing authors and dupe info.'
+        help = 'File containing various configuration information.'
+    )
+    parser.add_argument(
+        '--chart',
+        dest = "chart",
+        action = "store_true",
+        help = 'Show the churn chart.'
     )
 
     args = parser.parse_args()
 
-    if not (args.author or args.authorFile):
+    if not (args.author or args.config):
         parser.error('No action requested, add --author or --authorFile')
 
     before = args.before
     after = args.after
     author = args.author
     dir = args.dir
-    authorFile = args.authorFile
+    configFile = args.config
 
     agg_results = {}
 
     # if a config file was provided
-    if authorFile:
+    if configFile:
         # Parse the data in the authorFile
-        with open(authorFile) as json_file:
+        with open(configFile) as json_file:
             configData = json.load(json_file)
             authorData = configData.get("aliasMap", None)
             repositories = configData.get("repositories", None)
@@ -101,7 +109,7 @@ def main():
                     command = 'git pull'
                     print("Bringing repo up to date", repo)
                     out = get_proc_out(command, directory).splitlines()
-
+                
                 # Calculate the churn for the repo and aggregate into total
                 repo_results = get_churn_for_repo(before, after, directory, authorData=authorData)
                 for alias in repo_results:
@@ -131,7 +139,10 @@ def main():
         agg_results[author] = data
 
     repostr = "\n".join(repositories)
-    show_chart(agg_results, before, after, repostr)
+    
+    if args.chart == True:
+        show_chart(agg_results, before, after, repostr)
+
     print(agg_results)
 
 def get_churn_for_repo(before, after, directory, authorData=None):
@@ -172,7 +183,7 @@ def show_chart(results, before, after, directory):
     y_2 = [ v["churn"] for k,v in results.items() ]
 
     fig, ax = plt.subplots(num="Code Churn")
-    ax.set_title("Repository\n" + directory + "\n\n" + after + " to " + before)
+    ax.set_title("Repositories\n" + directory + "\n\n" + after + " to " + before)
     ax.set_xlabel('Author')
     ax.set_ylabel('Contributions / Churn')
 
