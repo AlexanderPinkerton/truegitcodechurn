@@ -63,6 +63,12 @@ def main():
         help = 'Git repository directory'
     )
     parser.add_argument(
+        '--exdir',
+        type = str,
+        default = '',
+        help = 'Sub directory to exclude'
+    )
+    parser.add_argument(
         '--config',
         type = str,
         help = 'File containing various configuration information.'
@@ -83,9 +89,11 @@ def main():
     after = args.after
     author = args.author
     dir = args.dir
+    exdir  = args.exdir
     configFile = args.config
 
     agg_results = {}
+    repositories = None
 
     # if a config file was provided
     if configFile:
@@ -129,23 +137,27 @@ def main():
         for name in authors:
             print("Calculating churn for ", name)
             name = name.replace("'", "")
-            data = calc_churn(before, after, name, dir)
+            data = calc_churn(before, after, name, dir, exdir)
             if(data["churn"] != 0 or data["contribution"] !=0 ):
                 del data['name']
                 agg_results[name] = data
     else:
-        data = calc_churn(before, after, author, dir)
+        data = calc_churn(before, after, author, dir, exdir)
         del data['name']
         agg_results[author] = data
 
+    if not repositories:
+        repositories = [dir]
+        print(repositories)
+    
     repostr = "\n".join(repositories)
     
     if args.chart == True:
-        show_chart(agg_results, before, after, repostr)
+        show_chart(agg_results, before, after, repostr, 'chart.png')
 
     print(agg_results)
 
-def get_churn_for_repo(before, after, directory, authorData=None):
+def get_churn_for_repo(before, after, directory, authorData=None, exdir=''):
     
     results = {}
 
@@ -159,7 +171,7 @@ def get_churn_for_repo(before, after, directory, authorData=None):
 
             for alias in aliases:
                 try:
-                    data = calc_churn(before, after, alias, directory)
+                    data = calc_churn(before, after, alias, directory, exdir) 
                     if(data["churn"] != 0 or data["contribution"] !=0 ):
                         print("\t", alias, data["contribution"], data["churn"])
                         total_contributions += data["contribution"]
@@ -177,7 +189,7 @@ def get_churn_for_repo(before, after, directory, authorData=None):
     return results
 
 
-def show_chart(results, before, after, directory):
+def show_chart(results, before, after, directory, filename=''):
     x = [ k for k,v in results.items() ]
     y_1 = [ v["contribution"] for k,v in results.items() ]
     y_2 = [ v["churn"] for k,v in results.items() ]
@@ -195,9 +207,12 @@ def show_chart(results, before, after, directory):
     plt.xticks(rotation=90)
     plt.tight_layout()
 
+    if filename:
+        plt.savefig(filename)
+        
     plt.show()
 
-def calc_churn(before, after, name, dir):
+def calc_churn(before, after, name, dir, exdir):
    
     commits = get_commits(before, after, name, dir)
 
@@ -212,7 +227,8 @@ def calc_churn(before, after, name, dir):
             dir,
             files,
             contribution,
-            churn
+            churn,
+            exdir
         )
     
     return {"name":name, "contribution":contribution, "churn":-churn}
@@ -221,16 +237,20 @@ def get_authors(directory):
     # Get all of the authors for this repository
     authors = subprocess.Popen(["git", "log", "--format='%aN'"], stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
     # Sort and remove duplicates
-    sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
+    # sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
     names = []
-    for output in sort.stdout.readlines():
+    for output in authors.stdout.readlines():
         names.append(output.strip())
-
+    names = list(dict.fromkeys(names))
+    print(names)
     return names
 
-def get_loc(commit, dir, files, contribution, churn):
+def get_loc(commit, dir, files, contribution, churn, exdir):
     # git show automatically excludes binary file changes
     command = 'git show --format= --unified=0 --no-prefix ' + commit
+    if len(exdir) > 1:
+        # https://stackoverflow.com/a/21079437
+        command += ' -- . ":(exclude,icase)'+exdir+'"'
     results = get_proc_out(command, dir).splitlines()
     file = ''
     loc_changes = ''
