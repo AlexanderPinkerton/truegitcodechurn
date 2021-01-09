@@ -234,11 +234,12 @@ def get_authors(directory):
     # Get all of the authors for this repository
     authors = subprocess.Popen(["git", "log", "--format='%aN'"], stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
     # Sort and remove duplicates
-    sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
+    # sort = subprocess.Popen(["sort", "-u"], stdin=authors.stdout, stdout=subprocess.PIPE, universal_newlines=True, cwd=directory)
     names = []
-    for output in sort.stdout.readlines():
+    for output in authors.stdout.readlines():
         names.append(output.strip())
-
+    names = list(dict.fromkeys(names))
+    print(names)
     return names
 
 def get_loc(commit, dir, files, contribution, churn, exdir):
