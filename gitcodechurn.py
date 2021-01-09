@@ -153,7 +153,7 @@ def main():
     repostr = "\n".join(repositories)
     
     if args.chart == True:
-        show_chart(agg_results, before, after, repostr)
+        show_chart(agg_results, before, after, repostr, 'chart.png')
 
     print(agg_results)
 
@@ -189,7 +189,7 @@ def get_churn_for_repo(before, after, directory, authorData=None, exdir=''):
     return results
 
 
-def show_chart(results, before, after, directory):
+def show_chart(results, before, after, directory, filename=''):
     x = [ k for k,v in results.items() ]
     y_1 = [ v["contribution"] for k,v in results.items() ]
     y_2 = [ v["churn"] for k,v in results.items() ]
@@ -207,6 +207,9 @@ def show_chart(results, before, after, directory):
     plt.xticks(rotation=90)
     plt.tight_layout()
 
+    if filename:
+        plt.savefig(filename)
+        
     plt.show()
 
 def calc_churn(before, after, name, dir, exdir):
