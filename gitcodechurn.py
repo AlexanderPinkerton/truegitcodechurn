@@ -86,6 +86,7 @@ def main():
     configFile = args.config
 
     agg_results = {}
+    repositories = None
 
     # if a config file was provided
     if configFile:
@@ -138,6 +139,10 @@ def main():
         del data['name']
         agg_results[author] = data
 
+    if not repositories:
+        repositories = [dir]
+        print(repositories)
+    
     repostr = "\n".join(repositories)
     
     if args.chart == True:
